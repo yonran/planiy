@@ -1,11 +1,22 @@
 import * as toolbar from "./toolbar";
 import * as line from "./tools/line"
 import { RenderSvgHooks } from "./renderSvg";
+import { Point2d } from "./point";
 
 export interface TopState {
     tool: toolbar.ToolEnum
-    toolState: line.LineToolState | null
+    toolState: TopToolState|null
     renderHooks: RenderSvgHooks
+    zoom: number
+    entities: Entity[]
+}
+export type TopToolState = line.LineToolState
+export type Entity = LineEntity
+export const ENTITY_TYPE_LINE = "Line"
+export interface LineEntity {
+    type: typeof ENTITY_TYPE_LINE
+    start: Point2d
+    end: Point2d
 }
 const renderHooks = {
     [toolbar.TOOL_LINE]: line.renderHooks,
@@ -14,7 +25,9 @@ const renderHooks = {
 export const initialState: TopState = {
     tool: toolbar.TOOL_LINE,
     toolState: null,
-    renderHooks: renderHooks[toolbar.TOOL_LINE]
+    renderHooks: renderHooks[toolbar.TOOL_LINE],
+    zoom: 1,
+    entities: [],
 }
 export const reducer = (state: TopState | undefined, action: TopLevelActions): TopState => {
     state = state || initialState
@@ -26,6 +39,9 @@ export const reducer = (state: TopState | undefined, action: TopLevelActions): T
         }
         case line.ACTION_LINE_START:
         case line.ACTION_LINE_CHANGE:
+        case line.ACTION_LINE_COMMIT:
+        case line.ACTION_LINE_CLOSE:
+        case line.ACTION_LINE_CANCEL:
             return line.reducer(state, action)
         default: return state
     }
