@@ -4,40 +4,51 @@ import { RenderSvgHooks } from "../renderSvg";
 
 import { clientPoint } from "d3-selection"
 import * as React from "react";
+import { Snapper } from "../snapper";
+import { LengthWithUnit, parseLength, Me_7, AngleWithUnit, parseLengthAndAngle, LengthOrAngle } from "../util/length";
 
+export const TOOL_STATE_LINE = "LineToolState"
 export interface LineToolState {
-    type: "LineToolState"
+    type: typeof TOOL_STATE_LINE
     firstPoint: Point2d | null
     prevPoint: Point2d | null
     cursor: Point2d | null
+    lengthConstraint: LengthWithUnit | null
+    angleConstraint: AngleWithUnit | null
 }
 export const ACTION_LINE_START = "LineStart"
 export interface LineStart {type: typeof ACTION_LINE_START, payload: Point2d}
 export const ACTION_LINE_CHANGE = "LineChange"
 export interface LineChange {type: typeof ACTION_LINE_CHANGE, payload: Point2d}
 export const ACTION_LINE_COMMIT = "LineCommit"
+export interface LineCancel {type: typeof ACTION_LINE_CANCEL, payload: null}
+export const ACTION_LINE_SET_CONSTRAINT = "LineSetConstraint"
+export interface LineSetConstraint {type: typeof ACTION_LINE_SET_CONSTRAINT, payload: LengthOrAngle}
 export interface LineCommit {type: typeof ACTION_LINE_COMMIT, payload: Point2d}
 export const ACTION_LINE_CLOSE = "LineClose"
 export interface LineClose {type: typeof ACTION_LINE_CLOSE, payload: null}
 export const ACTION_LINE_CANCEL = "LineCancel"
-export interface LineCancel {type: typeof ACTION_LINE_CANCEL, payload: null}
-export type LineAction = LineStart | LineChange | LineCommit | LineClose | LineCancel
+export type LineAction = LineStart | LineChange | LineCommit | LineSetConstraint | LineClose | LineCancel
 export const actionCreators = {
     lineStart: (point: Point2d): LineStart => ({type: ACTION_LINE_START, payload: point}),
     lineChange: (point: Point2d): LineChange => ({type: ACTION_LINE_CHANGE, payload: point}),
     lineCommit: (point: Point2d): LineCommit => ({type: ACTION_LINE_COMMIT, payload: point}),
     lineClose: (): LineClose => ({type: ACTION_LINE_CLOSE, payload: null}),
     lineCancel: (): LineCancel => ({type: ACTION_LINE_CANCEL, payload: null}),
+    lineSetConstraint: (lengthOrAngle: LengthOrAngle): LineSetConstraint => ({type: ACTION_LINE_SET_CONSTRAINT, payload: lengthOrAngle}),
 }
 
 const extractLineToolState = (toolState: TopToolState|null): LineToolState =>
     toolState != null && toolState.type == "LineToolState" ? toolState :
     {
-        type: "LineToolState",
+        type: TOOL_STATE_LINE,
         firstPoint: null,
         prevPoint: null,
         cursor: null,
+        lengthConstraint: null,
+        angleConstraint: null,
     }
+
 
 export const renderHooks: RenderSvgHooks =
     {
@@ -46,45 +57,48 @@ export const renderHooks: RenderSvgHooks =
             const toolState: LineToolState = extractLineToolState(topState.toolState)
             return <g>
                 {toolState.prevPoint != null ? <g>
-                    <circle key="startcir" cx={toolState.prevPoint.x} cy={toolState.prevPoint.y} r="2"/>
+                    <circle key="startcir" cx={toolState.prevPoint.x * topState.zoom} cy={toolState.prevPoint.y * topState.zoom} r="2"/>
                 </g> : null}
                 {toolState.cursor != null ? <g>
-                    <circle key="endcir" cx={toolState.cursor.x} cy={toolState.cursor.y} r="2"/>
+                    <circle key="endcir" cx={toolState.cursor.x * topState.zoom} cy={toolState.cursor.y * topState.zoom} r="2"/>
                 </g> : null}
                 {toolState.prevPoint != null && toolState.cursor != null ? <g>
-                    <line x1={toolState.prevPoint.x}
-                        y1={toolState.prevPoint.y}
-                        x2={toolState.cursor.x}
-                        y2={toolState.cursor.y}
+                    <line x1={toolState.prevPoint.x * topState.zoom}
+                        y1={toolState.prevPoint.y * topState.zoom}
+                        x2={toolState.cursor.x * topState.zoom}
+                        y2={toolState.cursor.y * topState.zoom}
                         strokeWidth="1"
                         stroke="black"
                     />
                 </g> : null}
             </g>
         },
-        svgMouseDown: (actionCreators: typeof topActionCreators) => (e: React.MouseEvent<SVGSVGElement>) => {
+        svgMouseDown: (snapper: Snapper, actionCreators: typeof topActionCreators) => (e: React.MouseEvent<SVGSVGElement>) => {
             if (e.buttons != 1)
                 return
             const svgElement: SVGSVGElement = e.currentTarget
             const [x, y] = clientPoint(svgElement, e)
-            actionCreators.lineStart({x, y})
+            actionCreators.lineStart(snapper({x, y}))
             e.preventDefault()  // prevent input from losing focus
         },
-        svgMouseMove: (actionCreators: typeof topActionCreators) => (e: React.MouseEvent<SVGSVGElement>) => {
+        svgMouseMove: (snapper: Snapper, actionCreators: typeof topActionCreators) => (e: React.MouseEvent<SVGSVGElement>) => {
             const svgElement: SVGSVGElement = e.currentTarget
             const [x, y] = clientPoint(svgElement, e)
-            actionCreators.lineChange({x, y})
+            actionCreators.lineChange(snapper({x, y}))
         },
-        svgMouseUp: (actionCreators: typeof topActionCreators) => (e: React.MouseEvent<SVGSVGElement>) => {
+        svgMouseUp: (snapper: Snapper, actionCreators: typeof topActionCreators) => (e: React.MouseEvent<SVGSVGElement>) => {
             const svgElement: SVGSVGElement = e.currentTarget
             const [x, y] = clientPoint(svgElement, e)
-            actionCreators.lineCommit({x, y})
+            actionCreators.lineCommit(snapper({x, y}))
         },
         keyPress: (actionCreators: typeof topActionCreators) => (e: React.KeyboardEvent<HTMLInputElement>) => {
             const input: HTMLInputElement = e.currentTarget
             if (e.key == "Enter") {
+                let lengthOrAngle: LengthOrAngle|null
                 if (input.value == "c") {
                     actionCreators.lineClose()
+                } else if (null != (lengthOrAngle = parseLengthAndAngle(input.value, Me_7))) {
+                    actionCreators.lineSetConstraint(lengthOrAngle)
                 }
                 input.value = ""
                 e.preventDefault()
@@ -108,6 +122,8 @@ export const reducer = (state: TopState, action: LineAction) => {
             const toolState: LineToolState = {...oldToolState,
                 firstPoint: oldToolState.firstPoint != null ? oldToolState.firstPoint : action.payload,
                 prevPoint: action.payload,
+                angleConstraint: null,
+                lengthConstraint: null,
             }
             const line: LineEntity | null = oldToolState.prevPoint == null ? null :
                 point2dsEqual(oldToolState.prevPoint, action.payload) ? null :
@@ -141,6 +157,14 @@ export const reducer = (state: TopState, action: LineAction) => {
         case ACTION_LINE_CHANGE: {
             const oldToolState: LineToolState = extractLineToolState(state.toolState)
             const toolState: LineToolState = {...oldToolState, cursor: action.payload}
+            return {...state, toolState}
+        }
+        case ACTION_LINE_SET_CONSTRAINT: {
+            const oldToolState: LineToolState = extractLineToolState(state.toolState)
+            const toolState: LineToolState = {...oldToolState,
+                lengthConstraint: action.payload.length == undefined ? oldToolState.lengthConstraint : action.payload.length,
+                angleConstraint: action.payload.angle == undefined ? oldToolState.angleConstraint : action.payload.angle,
+            }
             return {...state, toolState}
         }
         case ACTION_LINE_CANCEL: {

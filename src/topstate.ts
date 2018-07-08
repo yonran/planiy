@@ -26,7 +26,7 @@ export const initialState: TopState = {
     tool: toolbar.TOOL_LINE,
     toolState: null,
     renderHooks: renderHooks[toolbar.TOOL_LINE],
-    zoom: 1,
+    zoom: 25/12/254,  // 25 px per foot
     entities: [],
 }
 export const reducer = (state: TopState | undefined, action: TopLevelActions): TopState => {
@@ -42,6 +42,7 @@ export const reducer = (state: TopState | undefined, action: TopLevelActions): T
         case line.ACTION_LINE_COMMIT:
         case line.ACTION_LINE_CLOSE:
         case line.ACTION_LINE_CANCEL:
+        case line.ACTION_LINE_SET_CONSTRAINT:
             return line.reducer(state, action)
         default: return state
     }

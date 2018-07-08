@@ -1,13 +1,14 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom"
 import { TopState, actionCreators, Entity, ENTITY_TYPE_LINE } from "./topstate";
+import { Snapper, snapperGen } from "./snapper";
 
 export interface RenderSvgHooks {
     cursor?: string
     renderToolOverlay?: (topState: TopState) => JSX.Element
-    svgMouseDown?: (creators: typeof actionCreators) => React.MouseEventHandler<SVGSVGElement>
-    svgMouseMove?: (creators: typeof actionCreators) => React.MouseEventHandler<SVGSVGElement>
-    svgMouseUp?: (creators: typeof actionCreators) => React.MouseEventHandler<SVGSVGElement>
+    svgMouseDown?: (snapper: Snapper, creators: typeof actionCreators) => React.MouseEventHandler<SVGSVGElement>
+    svgMouseMove?: (snapper: Snapper, creators: typeof actionCreators) => React.MouseEventHandler<SVGSVGElement>
+    svgMouseUp?: (snapper: Snapper, creators: typeof actionCreators) => React.MouseEventHandler<SVGSVGElement>
     keyPress?: (creators: typeof actionCreators) => React.KeyboardEventHandler<HTMLInputElement>
     keyDown?: (creators: typeof actionCreators) => React.KeyboardEventHandler<HTMLInputElement>
 }
@@ -29,22 +30,23 @@ export class RenderSvg extends React.Component<Props> {
             this.input.focus()
     }
     render(): JSX.Element {
+        const snapper: Snapper = snapperGen(this.props.state)
         return <div>
             <svg
                 width="800" height="600"
                 viewBox="0 0 800 400"
                 cursor={this.props.renderHooks.cursor}
-                onMouseDown={this.props.renderHooks.svgMouseDown != null ? this.props.renderHooks.svgMouseDown(this.props.actionCreators) : undefined}
-                onMouseMove={this.props.renderHooks.svgMouseMove != null ? this.props.renderHooks.svgMouseMove(this.props.actionCreators) : undefined}
-                onMouseUp={this.props.renderHooks.svgMouseUp != null ? this.props.renderHooks.svgMouseUp(this.props.actionCreators) : undefined}
+                onMouseDown={this.props.renderHooks.svgMouseDown != null ? this.props.renderHooks.svgMouseDown(snapper, this.props.actionCreators) : undefined}
+                onMouseMove={this.props.renderHooks.svgMouseMove != null ? this.props.renderHooks.svgMouseMove(snapper, this.props.actionCreators) : undefined}
+                onMouseUp={this.props.renderHooks.svgMouseUp != null ? this.props.renderHooks.svgMouseUp(snapper, this.props.actionCreators) : undefined}
                 >
                 {this.props.state.entities.map((entity: Entity, i: number) => {
                     switch (entity.type) {
                         case ENTITY_TYPE_LINE:
                             return <line
                                 key={i}
-                                x1={entity.start.x} y1={entity.start.y}
-                                x2={entity.end.x} y2={entity.end.y}
+                                x1={entity.start.x * this.props.state.zoom} y1={entity.start.y * this.props.state.zoom}
+                                x2={entity.end.x * this.props.state.zoom} y2={entity.end.y * this.props.state.zoom}
                                 strokeWidth="1"
                                 stroke="black"
                                 />
