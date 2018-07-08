@@ -34,7 +34,7 @@ export class RenderSvg extends React.Component<Props> {
         return <div>
             <svg
                 width="800" height="600"
-                viewBox="0 0 800 400"
+                viewBox={`${this.props.state.origin.x * this.props.state.zoom} ${this.props.state.origin.y * this.props.state.zoom} 800 400`}
                 cursor={this.props.renderHooks.cursor}
                 onMouseDown={this.props.renderHooks.svgMouseDown != null ? this.props.renderHooks.svgMouseDown(snapper, this.props.actionCreators) : undefined}
                 onMouseMove={this.props.renderHooks.svgMouseMove != null ? this.props.renderHooks.svgMouseMove(snapper, this.props.actionCreators) : undefined}

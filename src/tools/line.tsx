@@ -39,7 +39,7 @@ export const actionCreators = {
 }
 
 const extractLineToolState = (toolState: TopToolState|null): LineToolState =>
-    toolState != null && toolState.type == "LineToolState" ? toolState :
+    toolState != null && toolState.type == TOOL_STATE_LINE ? toolState :
     {
         type: TOOL_STATE_LINE,
         firstPoint: null,
