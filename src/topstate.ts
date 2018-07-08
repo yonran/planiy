@@ -3,6 +3,7 @@ import * as line from "./tools/line"
 import * as hand from "./tools/hand"
 import { RenderSvgHooks } from "./renderSvg";
 import { Point2d } from "./point";
+import { resolve } from "url";
 
 export interface TopState {
     tool: toolbar.ToolEnum
@@ -12,6 +13,7 @@ export interface TopState {
     /** Point in document coordinates that will be drawn as the svg origin */
     origin: Point2d
     entities: Entity[]
+    loadFilePromise: null|Promise<SaveFileJson>
 }
 export type TopToolState = line.LineToolState | hand.HandToolState
 export type Entity = LineEntity
@@ -33,6 +35,7 @@ export const initialState: TopState = {
     zoom: 25/12/254,  // 25 px per foot
     origin: {x: 0, y: 0},
     entities: [],
+    loadFilePromise: null,
 }
 export const reducer = (state: TopState | undefined, action: TopLevelActions): TopState => {
     state = state || initialState
@@ -41,6 +44,10 @@ export const reducer = (state: TopState | undefined, action: TopLevelActions): T
             ...state,
             tool: action.payload.tool,
             renderHooks: renderHooks[action.payload.tool]
+        }
+        case "LoadedFile": return {
+            ...state,
+            ...action.payload
         }
         case line.ACTION_LINE_START:
         case line.ACTION_LINE_CHANGE:
@@ -60,9 +67,36 @@ export const reducer = (state: TopState | undefined, action: TopLevelActions): T
 
 interface ChangeToolEvent {type: "ToolChange", payload: {tool: toolbar.ToolEnum}}
 const changeToolAction = (tool: toolbar.ToolEnum): ChangeToolEvent => ({type: "ToolChange", payload: {tool}})
-export type TopLevelActions = ChangeToolEvent | line.LineAction | hand.HandAction
+interface LoadedFileAction {type: "LoadedFile", payload: SaveFileJson}
+const loadedFileAction = (result: SaveFileJson): LoadedFileAction => ({type: "LoadedFile", payload: result})
+export type TopLevelActions = ChangeToolEvent | LoadedFileAction | line.LineAction | hand.HandAction
+
+export interface SaveFileJson {
+    origin: Point2d
+    entities: Entity[]
+    zoom: number
+}
+export const saveFileUrl = (state: TopState): string => {
+    const {entities,zoom,origin} = state
+    const json = JSON.stringify({entities,zoom,origin})
+    return `data:application/octet-stream,${encodeURIComponent(json)}`
+}
+export const loadFile = (file: File): Promise<SaveFileJson> => {
+    const fr = new FileReader
+    fr.readAsText(file)
+    return new Promise((resolve, reject) => {
+        fr.onload = resolve
+        fr.onerror = reject
+    }).then(() => {
+        const s = fr.result as string
+        const newDoc = JSON.parse(s)
+        const {origin, entities, zoom} = newDoc
+        return {origin, entities, zoom}
+    })
+}
 
 export const actionCreators = {
+    loadedFileAction,
     changeToolAction,
     ...line.actionCreators,
     ...hand.actionCreators,

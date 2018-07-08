@@ -1,7 +1,7 @@
 
 import * as renderSvg from "./renderSvg"
 import * as toolbar from "./toolbar"
-import { TopState, initialState, reducer, actionCreators } from "./topstate";
+import { TopState, initialState, reducer, actionCreators, saveFileUrl, SaveFileJson, loadFile } from "./topstate";
 
 import * as React from "react";
 import * as ReactDOM from "react-dom"
@@ -21,7 +21,14 @@ class ViewUrlPage extends React.Component<Prop> {
         return <div>
             <toolbar.Toolbar
                 selectedTool={this.props.tool}
-                onSelect={this.props.changeToolAction}/>
+                onSelect={this.props.changeToolAction}
+                onLoad={(file: File) => {
+                    loadFile(file).then((data: SaveFileJson) => {
+                        this.props.loadedFileAction(data)
+                    })
+                }}
+                onSave={() => saveFileUrl(this.props)}
+                />
             <renderSvg.RenderSvg
                 state={this.props}
                 actionCreators={this.props}
@@ -34,6 +41,7 @@ const store = createStore(
     reducer, initialState,
     (window as any).__REDUX_DEVTOOLS_EXTENSION__ && (window as any).__REDUX_DEVTOOLS_EXTENSION__()
 )
+
 const EnhancedViewUrlPage = connect(
     (state: TopState) => state,
     (dispatch: Dispatch) => bindActionCreators(actionCreators, dispatch)
