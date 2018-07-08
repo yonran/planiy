@@ -1,0 +1,1 @@
+This is a simple 2d floor plan editor.
