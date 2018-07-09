@@ -1,10 +1,10 @@
 {
-  "name": "diysketch",
+  "name": "planiy",
   "version": "0.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "webpack-dev-server  --hot --port 8000",
+    "start": "webpack-dev-server --hot --port 8000",
     "build": "webpack",
     "test": "mocha -r ts-node/register test/*"
   },
