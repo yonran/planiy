@@ -1,6 +1,7 @@
 import * as toolbar from "./toolbar";
 import * as line from "./tools/line"
 import * as hand from "./tools/hand"
+import * as trim from "./tools/trim"
 import { RenderSvgHooks } from "./renderSvg";
 import { Point2d } from "./point";
 import { resolve } from "url";
@@ -15,7 +16,7 @@ export interface TopState {
     entities: Entity[]
     loadFilePromise: null|Promise<SaveFileJson>
 }
-export type TopToolState = line.LineToolState | hand.HandToolState
+export type TopToolState = line.LineToolState | hand.HandToolState | trim.TrimToolState
 export type Entity = LineEntity
 export const ENTITY_TYPE_LINE = "Line"
 export interface LineEntity {
@@ -26,6 +27,7 @@ export interface LineEntity {
 const renderHooks = {
     [toolbar.TOOL_LINE]: line.renderHooks,
     [toolbar.TOOL_HAND]: hand.renderHooks,
+    [toolbar.TOOL_TRIM]: trim.renderHooks,
     [toolbar.TOOL_ARROW]: line.renderHooks,  // TODO: use arrow renderhooks
 }
 export const initialState: TopState = {
@@ -61,6 +63,8 @@ export const reducer = (state: TopState | undefined, action: TopLevelActions): T
         case hand.ACTION_HAND_UP:
         case hand.ACTION_HAND_ZOOM:
             return hand.reducer(state, action)
+        case trim.ACTION_TRIM:
+            return trim.reducer(state, action)
         default: return state
     }
 }
@@ -69,7 +73,7 @@ interface ChangeToolEvent {type: "ToolChange", payload: {tool: toolbar.ToolEnum}
 const changeToolAction = (tool: toolbar.ToolEnum): ChangeToolEvent => ({type: "ToolChange", payload: {tool}})
 interface LoadedFileAction {type: "LoadedFile", payload: SaveFileJson}
 const loadedFileAction = (result: SaveFileJson): LoadedFileAction => ({type: "LoadedFile", payload: result})
-export type TopLevelActions = ChangeToolEvent | LoadedFileAction | line.LineAction | hand.HandAction
+export type TopLevelActions = ChangeToolEvent | LoadedFileAction | line.LineAction | hand.HandAction | trim.TrimAction
 
 export interface SaveFileJson {
     origin: Point2d
@@ -100,4 +104,5 @@ export const actionCreators = {
     changeToolAction,
     ...line.actionCreators,
     ...hand.actionCreators,
+    ...trim.actionCreators,
 }

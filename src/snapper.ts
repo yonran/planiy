@@ -10,7 +10,7 @@ interface SnapConstraints {
 }
 
 // these are pixels; divide them by state.zoom to get distance in document dimensions
-const SNAP_POINTS_DISTANCE = 10
+export const SNAP_POINTS_DISTANCE = 10
 const SNAP_PROJECTION_DISTANCE = 7
 export const snapperGen = (state: TopState) => (pointSvgCoords: Point2d): Point2d => {
     const point = {x: pointSvgCoords.x/state.zoom, y: pointSvgCoords.y/state.zoom}
